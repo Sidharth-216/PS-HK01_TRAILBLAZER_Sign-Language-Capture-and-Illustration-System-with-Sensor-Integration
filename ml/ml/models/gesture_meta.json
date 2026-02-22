@@ -1,0 +1,42 @@
+{
+  "model_type": "RandomForest",
+  "accuracy": 69.51,
+  "gestures": [
+    "A",
+    "B",
+    "Bad",
+    "C",
+    "Come",
+    "D",
+    "E",
+    "F",
+    "Food",
+    "G",
+    "Go",
+    "Good",
+    "Hello",
+    "Help",
+    "K",
+    "L",
+    "No",
+    "Please",
+    "S",
+    "Sorry",
+    "Stop",
+    "ThankYou",
+    "V",
+    "Water",
+    "X",
+    "Yes"
+  ],
+  "n_features": 5,
+  "feature_cols": [
+    "thumb",
+    "index",
+    "middle",
+    "ring",
+    "pinky"
+  ],
+  "n_samples": 16197,
+  "pinky_active": false
+}

@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISL — Unified Sign Language System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Clash+Display:wght@400;600;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink: #08090f;
+  --surface: #0e1019;
+  --card: #121520;
+  --border: #1c2035;
+  --border-hi: #2a3050;
+  --cam: #00e5a0;
+  --glove: #a78bfa;
+  --glove-dim: rgba(167,139,250,0.15);
+  --cam-dim: rgba(0,229,160,0.12);
+  --warn: #f59e0b;
+  --err: #ef4444;
+  --txt: #e2e6f3;
+  --muted: #4a5273;
+  --thumb-c: #00e5a0;
+  --index-c: #a78bfa;
+  --middle-c: #f87171;
+  --ring-c:   #fbbf24;
+  --pinky-c:  #fb923c;
+  --r: 14px;
+}
+
+html { font-size: 15px; }
+body {
+  background: var(--ink);
+  color: var(--txt);
+  font-family: 'Outfit', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grid background */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,160,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,160,.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+
+/* ─── HEADER ─── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 28px;
+  background: rgba(8,9,15,.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  display: flex; align-items: center; gap: 14px;
+}
+.logo-glyph {
+  width: 42px; height: 42px;
+  background: linear-gradient(135deg, var(--cam), var(--glove));
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 24px rgba(0,229,160,.25);
+}
+.logo h1 {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 1.25rem; font-weight: 700;
+  background: linear-gradient(90deg, var(--cam), var(--glove));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo p {
+  font-family: 'DM Mono', monospace;
+  font-size: .62rem; color: var(--muted);
+  letter-spacing: .14em; text-transform: uppercase;
+  margin-top: 2px;
+}
+.hdr-badges { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hbadge {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 13px; border-radius: 20px;
+  font-family: 'DM Mono', monospace; font-size: .68rem; font-weight: 500;
+  border: 1px solid; transition: all .3s;
+}
+.hbadge.cam  { border-color: var(--cam); color: var(--cam); background: var(--cam-dim); }
+.hbadge.glove{ border-color: var(--glove); color: var(--glove); background: var(--glove-dim); }
+.hbadge.gemini { border-color: #60a5fa; color: #60a5fa; background: rgba(96,165,250,.1); }
+.hbadge.off  { border-color: var(--muted); color: var(--muted); background: transparent; opacity: .6; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)} }
+
+/* ─── LAYOUT ─── */
+main {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 340px 1fr 320px;
+  grid-template-rows: auto auto auto;
+  gap: 14px;
+  padding: 18px 22px;
+  max-width: 1440px; margin: 0 auto;
+}
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+  position: relative; overflow: hidden;
+}
+.card::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,229,160,.2), transparent);
+}
+.card.glove-card::after {
+  background: linear-gradient(90deg, transparent, rgba(167,139,250,.25), transparent);
+}
+.clabel {
+  font-family: 'DM Mono', monospace;
+  font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.clabel .cline { width: 16px; height: 1px; background: currentColor; }
+.clabel.cam-l  { color: var(--cam); }
+.clabel.glv-l  { color: var(--glove); }
+
+/* ─── SOURCE PILL ─── */
+.src-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 20px;
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid; transition: all .4s;
+}
+.src-pill.webcam     { color: var(--cam); border-color: var(--cam); background: var(--cam-dim); }
+.src-pill.glove      { color: var(--glove); border-color: var(--glove); background: var(--glove-dim); }
+.src-pill.glove-fallback { color: var(--warn); border-color: var(--warn); background: rgba(245,158,11,.1); }
+.src-pill.glove-posture  { color: var(--glove); border-color: var(--glove); background: var(--glove-dim); }
+
+/* ─── LEFT COL: GESTURE DISPLAY ─── */
+.gesture-col { grid-row: span 3; display: flex; flex-direction: column; gap: 14px; }
+
+.gesture-card {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 28px 20px 22px;
+}
+.g-emoji {
+  font-size: 5.5rem; line-height: 1; margin-bottom: 10px;
+  filter: drop-shadow(0 0 30px rgba(0,229,160,.35));
+  transition: transform .2s ease, filter .3s;
+}
+.g-emoji.pop { transform: scale(1.3); filter: drop-shadow(0 0 60px rgba(0,229,160,.8)); }
+.g-name {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 2.5rem; font-weight: 700;
+  color: var(--cam);
+  text-shadow: 0 0 40px rgba(0,229,160,.4);
+  min-height: 56px; text-align: center;
+  transition: all .3s;
+}
+.g-src { margin-top: 6px; }
+
+/* Confidence ring */
+.conf-wrap { position: relative; width: 96px; height: 96px; margin: 14px auto; }
+.conf-wrap svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+.ring-bg   { fill: none; stroke: var(--border); stroke-width: 7; }
+.ring-fill { fill: none; stroke: var(--cam); stroke-width: 7; stroke-linecap: round;
+             stroke-dasharray: 270; stroke-dashoffset: 270; transition: stroke-dashoffset .5s ease;
+             filter: drop-shadow(0 0 6px var(--cam)); }
+.ring-val {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-size: 1.05rem; font-weight: 500; color: var(--cam);
+}
+
+/* Sentence builder */
+.sentence-section { width: 100%; }
+.sent-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px; min-height: 58px;
+}
+.sent-words { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+.word-chip {
+  padding: 3px 11px; border-radius: 20px; font-size: .82rem; font-weight: 600;
+  background: rgba(0,229,160,.1); border: 1px solid rgba(0,229,160,.3);
+  color: var(--cam); animation: chipin .2s ease;
+}
+@keyframes chipin { from{transform:scale(.6);opacity:0} to{transform:scale(1);opacity:1} }
+.sent-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.btn {
+  padding: 7px 15px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--txt); font-family: 'Outfit', sans-serif; font-size: .78rem; font-weight: 600;
+  cursor: pointer; transition: all .2s;
+}
+.btn:hover { border-color: var(--cam); color: var(--cam); }
+.btn.primary { background: var(--cam-dim); border-color: var(--cam); color: var(--cam); }
+.btn.purple  { background: var(--glove-dim); border-color: var(--glove); color: var(--glove); }
+
+/* TTS voice indicator */
+.voice-indicator {
+  display: none; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 10px;
+  background: rgba(0,229,160,.08); border: 1px solid rgba(0,229,160,.2);
+  font-size: .8rem; color: var(--cam); margin-top: 8px;
+  animation: fadeIn .3s ease;
+}
+.voice-indicator.active { display: flex; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.voice-bars { display: flex; gap: 2px; align-items: flex-end; height: 16px; }
+.vbar { width: 3px; border-radius: 2px; background: var(--cam); animation: vbounce .6s ease-in-out infinite; }
+.vbar:nth-child(2){animation-delay:.1s}.vbar:nth-child(3){animation-delay:.2s}.vbar:nth-child(4){animation-delay:.15s}
+@keyframes vbounce { 0%,100%{height:4px}50%{height:14px} }
+
+/* ─── WEBCAM MODE ─── */
+.webcam-card { grid-column: 2; }
+.cam-container { position: relative; border-radius: 10px; overflow: hidden; background: #000; aspect-ratio: 4/3; }
+#camStream { display: none; width: 100%; height: 100%; object-fit: cover; }
+#processedCanvas { display: none; width: 100%; height: 100%; object-fit: contain; }
+.cam-processed-img { width: 100%; height: 100%; object-fit: contain; display: none; }
+#camPlaceholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #0d1117, #111827);
+  gap: 12px;
+}
+#camPlaceholder .cam-icon { font-size: 3rem; opacity: .4; }
+#camPlaceholder p { font-size: .85rem; color: var(--muted); }
+.cam-controls { display: flex; gap: 10px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+.cam-stat {
+  font-family: 'DM Mono', monospace; font-size: .7rem; color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+}
+.cam-stat span { color: var(--cam); font-weight: 600; }
+#hand-indicator {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'DM Mono', monospace; font-size: .7rem;
+  padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--border); color: var(--muted);
+  transition: all .3s;
+}
+#hand-indicator.detected { color: var(--cam); border-color: var(--cam); background: var(--cam-dim); }
+
+/* ─── GLOVE / SENSOR ─── */
+.glove-card { grid-column: 2; }
+.bars-grid { display: flex; flex-direction: column; gap: 12px; }
+.bar-row {
+  display: grid; grid-template-columns: 64px 1fr 50px;
+  align-items: center; gap: 10px;
+}
+.bar-finger {
+  font-family: 'DM Mono', monospace; font-size: .68rem;
+  text-transform: uppercase; letter-spacing: .1em;
+}
+.bar-track {
+  height: 9px; background: var(--surface); border-radius: 5px;
+  overflow: visible; position: relative;
+}
+.bar-fill {
+  height: 100%; border-radius: 5px; width: 0%;
+  transition: width .28s ease; position: relative;
+}
+.bar-fill::after {
+  content: ''; position: absolute; right: -2px; top: 50%;
+  transform: translateY(-50%); width: 13px; height: 13px;
+  border-radius: 50%; background: inherit; box-shadow: 0 0 8px currentColor;
+}
+.bar-val { font-family: 'DM Mono', monospace; font-size: .68rem; color: var(--muted); text-align: right; }
+.pinky-row { opacity: .3; }
+.f-thumb{background:var(--thumb-c)}.c-thumb{color:var(--thumb-c)}
+.f-index{background:var(--index-c)}.c-index{color:var(--index-c)}
+.f-middle{background:var(--middle-c)}.c-middle{color:var(--middle-c)}
+.f-ring{background:var(--ring-c)}.c-ring{color:var(--ring-c)}
+.f-pinky{background:var(--pinky-c)}.c-pinky{color:var(--pinky-c)}
+
+#waveCanvas {
+  width: 100%; height: 80px; display: block;
+  border-radius: 8px; background: var(--surface);
+  margin-top: 16px;
+}
+
+/* ESP32 status bar */
+.esp-status {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace; font-size: .68rem;
+  margin-bottom: 14px; transition: all .4s;
+}
+.esp-status.live   { border-color: var(--cam); color: var(--cam); background: var(--cam-dim); }
+.esp-status.dead   { border-color: var(--muted); color: var(--muted); }
+.esp-status.dummy  { border-color: var(--warn); color: var(--warn); background: rgba(245,158,11,.08); }
+
+/* ─── RIGHT COL ─── */
+.right-col { grid-column: 3; grid-row: span 3; display: flex; flex-direction: column; gap: 14px; }
+
+/* History */
+.history-list {
+  display: flex; flex-direction: column; gap: 7px;
+  max-height: 260px; overflow-y: auto; padding-right: 4px;
+}
+.history-list::-webkit-scrollbar { width: 2px; }
+.history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.hist-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; background: var(--surface);
+  border-radius: 10px; border: 1px solid var(--border);
+  animation: slidein .2s ease; transition: border-color .2s;
+}
+.hist-item:hover { border-color: var(--border-hi); }
+.hist-item.webcam    { border-left: 3px solid var(--cam); }
+.hist-item.glove     { border-left: 3px solid var(--glove); }
+.hist-item.glove-posture  { border-left: 3px solid var(--glove); }
+.hist-item.glove-fallback { border-left: 3px solid var(--warn); }
+@keyframes slidein { from{transform:translateX(16px);opacity:0} to{transform:translateX(0);opacity:1} }
+.hist-ico { font-size: 1.3rem; }
+.hist-name { font-weight: 600; font-size: .88rem; }
+.hist-meta { font-family: 'DM Mono', monospace; font-size: .6rem; color: var(--muted); margin-top: 2px; }
+
+/* Gemini AI Panel */
+.gemini-card { flex: 1; display: flex; flex-direction: column; }
+.gemini-card::after { background: linear-gradient(90deg, transparent, rgba(96,165,250,.2), transparent); }
+.ai-output {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px; min-height: 80px; flex: 1;
+  font-size: .82rem; line-height: 1.6; color: var(--txt);
+  overflow-y: auto; max-height: 160px;
+}
+.ai-output.loading { color: var(--muted); font-style: italic; }
+.chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.chat-input {
+  flex: 1; padding: 8px 12px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--txt); font-family: 'Outfit', sans-serif; font-size: .82rem;
+  outline: none; transition: border-color .2s;
+}
+.chat-input:focus { border-color: rgba(96,165,250,.5); }
+.chat-send {
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(96,165,250,.12); border: 1px solid rgba(96,165,250,.3);
+  color: #60a5fa; font-size: .78rem; font-weight: 600; cursor: pointer;
+  transition: all .2s;
+}
+.chat-send:hover { background: rgba(96,165,250,.2); }
+
+/* ISL Reference Grid */
+.ref-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 6px; max-height: 150px; overflow-y: auto; padding-right: 4px;
+}
+.ref-chip {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 4px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  cursor: pointer; transition: all .2s; font-size: .7rem;
+}
+.ref-chip:hover { border-color: var(--cam); transform: translateY(-2px); }
+.ref-chip .ri { font-size: 1.4rem; }
+.ref-chip .rn { font-family: 'DM Mono', monospace; font-size: .58rem; color: var(--muted); margin-top: 3px; text-align:center; }
+
+/* ─── MODE TABS ─── */
+.mode-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.mtab {
+  flex: 1; padding: 8px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted); text-align: center;
+  font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .2s;
+}
+.mtab.active-cam   { border-color: var(--cam);   color: var(--cam);   background: var(--cam-dim); }
+.mtab.active-glove { border-color: var(--glove); color: var(--glove); background: var(--glove-dim); }
+
+/* Responsive */
+@media(max-width:1150px) {
+  main { grid-template-columns: 300px 1fr; }
+  .right-col { grid-column: 1 / -1; grid-row: auto; flex-direction: row; flex-wrap: wrap; }
+  .right-col > .card { flex: 1; min-width: 260px; }
+}
+@media(max-width:740px) {
+  main { grid-template-columns: 1fr; padding: 10px; }
+  .gesture-col,.webcam-card,.glove-card,.right-col { grid-column: 1; grid-row: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-glyph">🤟</div>
+    <div>
+      <h1>ISL · Unified System</h1>
+      <p>Indian Sign Language · Webcam + Glove · Gemini AI</p>
+    </div>
+  </div>
+  <div class="hdr-badges">
+    <div class="hbadge cam" id="badge-cam"><span class="dot"></span><span id="cam-badge-txt">CAMERA</span></div>
+    <div class="hbadge glove" id="badge-esp"><span class="dot"></span><span id="esp-badge-txt">GLOVE</span></div>
+    <div class="hbadge gemini" id="badge-gemini"><span>✦ GEMINI</span></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ═══ LEFT: GESTURE DISPLAY ═══ -->
+  <div class="gesture-col">
+
+    <!-- Current Gesture -->
+    <div class="card gesture-card">
+      <div class="clabel"><span class="cline"></span>Detected Gesture</div>
+      <div class="g-emoji" id="g-emoji">🤚</div>
+      <div class="g-name"  id="g-name">Waiting…</div>
+      <div class="g-src"><span class="src-pill" id="src-pill" style="display:none"></span></div>
+
+      <div class="conf-wrap">
+        <svg viewBox="0 0 96 96">
+          <circle class="ring-bg"   cx="48" cy="48" r="43"/>
+          <circle class="ring-fill" cx="48" cy="48" r="43" id="ring-fill"/>
+        </svg>
+        <div class="ring-val" id="ring-val">0%</div>
+      </div>
+
+      <!-- Voice indicator -->
+      <div class="voice-indicator" id="voice-ind">
+        <div class="voice-bars">
+          <div class="vbar" style="height:6px"></div>
+          <div class="vbar"></div>
+          <div class="vbar"></div>
+          <div class="vbar" style="height:8px"></div>
+        </div>
+        <span id="voice-word">Speaking…</span>
+      </div>
+    </div>
+
+    <!-- Sentence Builder -->
+    <div class="card">
+      <div class="clabel"><span class="cline"></span>Sentence Builder</div>
+      <div class="sent-box">
+        <div class="sent-words" id="sent-words">
+          <span style="color:var(--muted);font-size:.8rem">Gestures appear here…</span>
+        </div>
+      </div>
+      <div class="sent-actions">
+        <button class="btn primary" onclick="speakSentence()">🔊 Speak All</button>
+        <button class="btn purple"  onclick="translateSentence()">✦ Translate</button>
+        <button class="btn"         onclick="clearSentence()">✕ Clear</button>
+        <button class="btn"         onclick="copySentence()">⎘ Copy</button>
+      </div>
+    </div>
+
+  </div><!-- /gesture-col -->
+
+
+  <!-- ═══ MIDDLE TOP: WEBCAM ═══ -->
+  <div class="card webcam-card">
+    <div class="clabel cam-l"><span class="cline"></span>Mode A — Webcam · MediaPipe</div>
+
+    <div class="cam-container">
+      <video id="camStream" autoplay muted playsinline></video>
+      <img id="processedImg" class="cam-processed-img" alt="Processed" />
+      <div id="camPlaceholder">
+        <div class="cam-icon">📷</div>
+        <p>Click "Start Camera" to begin</p>
+      </div>
+    </div>
+
+    <div class="cam-controls">
+      <button class="btn primary" id="startCamBtn" onclick="startCamera()">▶ Start Camera</button>
+      <button class="btn" id="stopCamBtn" onclick="stopCamera()" style="display:none">■ Stop</button>
+      <div id="hand-indicator">🖐 No Hand</div>
+      <div class="cam-stat">FPS <span id="fps-val">—</span></div>
+      <div class="cam-stat">Gesture <span id="cam-gest-val">—</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ MIDDLE BOTTOM: GLOVE / ESP32 ═══ -->
+  <div class="card glove-card glove-card">
+    <div class="clabel glv-l"><span class="cline"></span>Mode B — ESP32 Glove · Flex Sensors</div>
+
+    <div class="esp-status dead" id="esp-status">
+      <span class="dot" style="background:currentColor"></span>
+      <span id="esp-status-txt">ESP32 Offline — Showing reference gestures</span>
+    </div>
+
+    <div class="bars-grid">
+      <div class="bar-row"><span class="bar-finger c-thumb">Thumb</span><div class="bar-track"><div class="bar-fill f-thumb" id="b-thumb"></div></div><span class="bar-val" id="v-thumb">0</span></div>
+      <div class="bar-row"><span class="bar-finger c-index">Index</span><div class="bar-track"><div class="bar-fill f-index" id="b-index"></div></div><span class="bar-val" id="v-index">0</span></div>
+      <div class="bar-row"><span class="bar-finger c-middle">Middle</span><div class="bar-track"><div class="bar-fill f-middle" id="b-middle"></div></div><span class="bar-val" id="v-middle">0</span></div>
+      <div class="bar-row"><span class="bar-finger c-ring">Ring</span><div class="bar-track"><div class="bar-fill f-ring" id="b-ring"></div></div><span class="bar-val" id="v-ring">0</span></div>
+      <div class="bar-row pinky-row"><span class="bar-finger c-pinky">Pinky</span><div class="bar-track"><div class="bar-fill f-pinky" id="b-pinky"></div></div><span class="bar-val" id="v-pinky">—</span></div>
+    </div>
+    <canvas id="waveCanvas" height="80"></canvas>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted)">
+      <div>GLOVE GESTURE: <span style="color:var(--glove);font-weight:600" id="glove-gest-val">—</span></div>
+      <div>CONF: <span style="color:var(--glove)" id="glove-conf-val">—</span></div>
+    </div>
+  </div>
+
+
+  <!-- ═══ RIGHT COL ═══ -->
+  <div class="right-col">
+
+    <!-- History -->
+    <div class="card">
+      <div class="clabel"><span class="cline"></span>Recognition History</div>
+      <div class="history-list" id="hist-list">
+        <div style="color:var(--muted);font-size:.8rem;padding:8px">No gestures yet…</div>
+      </div>
+    </div>
+
+    <!-- Gemini AI -->
+    <div class="card gemini-card">
+      <div class="clabel" style="color:#60a5fa"><span class="cline" style="background:#60a5fa"></span>✦ Gemini AI Assistant</div>
+      <div class="ai-output" id="ai-output">
+        Ask anything about ISL, or translate your detected gestures using the button below.
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-input" placeholder="Ask about ISL…" onkeydown="if(e=>e.key==='Enter')sendChat()">
+        <button class="chat-send" onclick="sendChat()">Send</button>
+      </div>
+      <div class="sent-actions" style="margin-top:8px">
+        <button class="btn" onclick="translateSentence()" style="font-size:.72rem">✦ Translate Sentence</button>
+        <div id="gemini-status" style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);margin-left:auto">
+          Checking…
+        </div>
+      </div>
+    </div>
+
+    <!-- ISL Reference -->
+    <div class="card">
+      <div class="clabel"><span class="cline"></span>ISL Quick Reference</div>
+      <div class="ref-grid" id="ref-grid">Loading…</div>
+    </div>
+
+  </div><!-- /right-col -->
+
+</main>
+
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+const FINGERS = ["thumb","index","middle","ring","pinky"];
+const COLORS  = {thumb:"#00e5a0",index:"#a78bfa",middle:"#f87171",ring:"#fbbf24",pinky:"#fb923c"};
+const waveData = {thumb:[],index:[],middle:[],ring:[],pinky:[]};
+const WAVE_MAX = 100;
+
+let sentence = [];
+let histLen   = 0;
+let lastGesture = "";
+let camActive = false;
+let videoStream = null;
+let captureInterval = null;
+let frameCount = 0, fpsTimer = 0, fps = 0;
+let tts = window.speechSynthesis;
+let ttsVoice = null;
+
+// Pick a good TTS voice
+function initVoices() {
+  const voices = tts.getVoices();
+  ttsVoice = voices.find(v => v.lang.startsWith('en') && v.localService) || voices[0] || null;
+}
+if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = initVoices;
+initVoices();
+
+function speakWord(word) {
+  if (!word || !tts) return;
+  tts.cancel();
+  const utt = new SpeechSynthesisUtterance(word);
+  utt.rate = 0.92; utt.pitch = 1.05; utt.volume = 1;
+  if (ttsVoice) utt.voice = ttsVoice;
+
+  const ind = document.getElementById('voice-ind');
+  const vw  = document.getElementById('voice-word');
+  ind.classList.add('active');
+  vw.textContent = word;
+  utt.onend = () => ind.classList.remove('active');
+  utt.onerror = () => ind.classList.remove('active');
+  tts.speak(utt);
+}
+
+// ══════════════════════════════════════════════════════════════
+// WEBCAM
+// ══════════════════════════════════════════════════════════════
+async function startCamera() {
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480, facingMode:'user' } });
+    const vid = document.getElementById('camStream');
+    vid.srcObject = videoStream;
+    vid.style.display = 'block';
+    document.getElementById('camPlaceholder').style.display = 'none';
+    document.getElementById('processedImg').style.display = 'block';
+    document.getElementById('startCamBtn').style.display = 'none';
+    document.getElementById('stopCamBtn').style.display = '';
+    camActive = true;
+    fpsTimer = Date.now();
+    captureInterval = setInterval(captureAndSend, 150); // ~6.7fps
+  } catch (e) {
+    alert('Camera error: ' + e.message);
+  }
+}
+
+function stopCamera() {
+  camActive = false;
+  clearInterval(captureInterval);
+  if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+  document.getElementById('camStream').style.display = 'none';
+  document.getElementById('processedImg').style.display = 'none';
+  document.getElementById('camPlaceholder').style.display = 'flex';
+  document.getElementById('startCamBtn').style.display = '';
+  document.getElementById('stopCamBtn').style.display = 'none';
+}
+
+const offCanvas = document.createElement('canvas');
+async function captureAndSend() {
+  const vid = document.getElementById('camStream');
+  if (!camActive || vid.readyState < 2) return;
+
+  offCanvas.width  = vid.videoWidth  || 640;
+  offCanvas.height = vid.videoHeight || 480;
+  offCanvas.getContext('2d').drawImage(vid, 0, 0);
+  const b64 = offCanvas.toDataURL('image/jpeg', 0.75);
+
+  try {
+    const res = await fetch('/process_frame', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({image: b64})
+    });
+    const d = await res.json();
+
+    // FPS
+    frameCount++;
+    if (Date.now() - fpsTimer > 1000) {
+      fps = frameCount;
+      frameCount = 0; fpsTimer = Date.now();
+      document.getElementById('fps-val').textContent = fps;
+    }
+
+    // Show processed frame
+    if (d.processed_image) {
+      document.getElementById('processedImg').src = d.processed_image;
+    }
+
+    // Hand indicator
+    const hi = document.getElementById('hand-indicator');
+    if (d.hand_detected) { hi.textContent = '🖐 Hand Detected'; hi.classList.add('detected'); }
+    else                  { hi.textContent = '🖐 No Hand'; hi.classList.remove('detected'); }
+
+    document.getElementById('cam-gest-val').textContent = d.gesture || '—';
+
+    // Process TTS queue from server
+    if (d.tts_queue && d.tts_queue.length) {
+      d.tts_queue.forEach(w => speakWord(w));
+    }
+  } catch (e) { /* silent */ }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// WAVEFORM CANVAS
+// ══════════════════════════════════════════════════════════════
+const canvas = document.getElementById('waveCanvas');
+const ctx    = canvas.getContext('2d');
+function resizeCanvas() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+function drawWave() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(28,32,53,.8)'; ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+
+  FINGERS.forEach(f => {
+    const d = waveData[f]; if (d.length < 2) return;
+    ctx.strokeStyle = COLORS[f]; ctx.lineWidth = 1.5;
+    ctx.globalAlpha = f === 'pinky' ? .2 : .85;
+    ctx.shadowColor = COLORS[f]; ctx.shadowBlur = 4;
+    ctx.beginPath();
+    d.forEach((v, i) => {
+      const x = (i / (WAVE_MAX - 1)) * W;
+      const y = H - (v / 4095) * H * .88 - H * .06;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  });
+  requestAnimationFrame(drawWave);
+}
+drawWave();
+
+
+// ══════════════════════════════════════════════════════════════
+// UNIFIED POLLING
+// ══════════════════════════════════════════════════════════════
+let lastHistLen = 0;
+
+async function pollUnified() {
+  try {
+    const res = await fetch('/api/unified');
+    const d   = await res.json();
+
+    // Update sentence
+    if (JSON.stringify(d.sentence) !== JSON.stringify(sentence)) {
+      sentence = d.sentence || [];
+      renderSentence();
+    }
+
+    // Update main gesture display
+    if (d.last_gesture && d.last_gesture !== lastGesture) {
+      lastGesture = d.last_gesture;
+    }
+
+    // Update history
+    if (d.history && d.history.length !== lastHistLen) {
+      lastHistLen = d.history.length;
+      renderHistory(d.history);
+    }
+
+    // TTS from unified queue
+    if (d.tts_queue && d.tts_queue.length) {
+      d.tts_queue.forEach(w => speakWord(w));
+    }
+
+    // Glove data
+    const g = d.glove;
+    if (g) {
+      updateGloveUI(g);
+    }
+
+    // Update current gesture display from latest history
+    if (d.history && d.history.length) {
+      const latest = d.history[0];
+      updateGestureDisplay(latest.gesture, latest.confidence, latest.icon, latest.source);
+    }
+
+  } catch(e) { /* silent */ }
+}
+
+function updateGestureDisplay(gesture, conf, icon, source) {
+  if (!gesture || gesture === lastGesture) return;
+
+  const confVal = typeof conf === 'number' ? (conf > 1 ? conf / 100 : conf) : 0;
+
+  document.getElementById('g-name').textContent = gesture;
+  const emoji = document.getElementById('g-emoji');
+  emoji.textContent = icon || '🤟';
+  emoji.classList.add('pop');
+  setTimeout(() => emoji.classList.remove('pop'), 300);
+
+  // Confidence ring (stroke-dasharray=270)
+  document.getElementById('ring-fill').style.strokeDashoffset = 270 * (1 - confVal);
+  document.getElementById('ring-val').textContent = Math.round(confVal * 100) + '%';
+
+  // Source pill
+  const pill = document.getElementById('src-pill');
+  if (source) {
+    pill.style.display = 'inline-flex';
+    pill.className = 'src-pill ' + source;
+    const labels = { webcam: '📷 WEBCAM', 'glove-posture': '🧤 GLOVE', 'glove-fallback': '⚡ FALLBACK', fallback: '⚡ FALLBACK' };
+    pill.textContent = labels[source] || source.toUpperCase();
+  }
+}
+
+function updateGloveUI(g) {
+  // ESP32 status
+  const espEl = document.getElementById('esp-status');
+  const espTxt = document.getElementById('esp-status-txt');
+  if (g.esp32_live) {
+    espEl.className = 'esp-status live';
+    espTxt.textContent = 'ESP32 Live · Sensor data streaming';
+  } else if (g.dummy_running) {
+    espEl.className = 'esp-status dummy';
+    espTxt.textContent = 'Fallback mode · Reference gestures';
+  } else {
+    espEl.className = 'esp-status dead';
+    espTxt.textContent = 'ESP32 Offline · Connect glove to resume';
+  }
+
+  // Sensor bars
+  const raw = g.raw || {};
+  FINGERS.forEach(f => {
+    if (f === 'pinky') { document.getElementById('v-pinky').textContent = '—'; return; }
+    const val = raw[f] || 0;
+    document.getElementById('b-' + f).style.width = (val / 4095 * 100).toFixed(1) + '%';
+    document.getElementById('v-' + f).textContent = val;
+    waveData[f].push(val);
+    if (waveData[f].length > WAVE_MAX) waveData[f].shift();
+  });
+
+  document.getElementById('glove-gest-val').textContent = g.gesture || '—';
+  document.getElementById('glove-conf-val').textContent = g.confidence ? g.confidence + '%' : '—';
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// SENTENCE & HISTORY
+// ══════════════════════════════════════════════════════════════
+function renderSentence() {
+  const el = document.getElementById('sent-words');
+  el.innerHTML = sentence.length
+    ? sentence.map(w => `<span class="word-chip">${w}</span>`).join('')
+    : '<span style="color:var(--muted);font-size:.8rem">Gestures appear here…</span>';
+}
+
+function renderHistory(items) {
+  const el = document.getElementById('hist-list');
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:8px">No gestures yet…</div>';
+    return;
+  }
+  const srcLabel = s => s === 'webcam' ? '📷' : s === 'glove-posture' ? '🧤' : s === 'glove-fallback' ? '⚡' : '🤟';
+  el.innerHTML = items.map(i => `
+    <div class="hist-item ${i.source || ''}">
+      <span class="hist-ico">${i.icon || '🤟'}</span>
+      <div>
+        <div class="hist-name">${i.gesture}</div>
+        <div class="hist-meta">${srcLabel(i.source)} ${i.confidence}% · ${i.timestamp}</div>
+      </div>
+    </div>`).join('');
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// BUTTONS
+// ══════════════════════════════════════════════════════════════
+function speakSentence() {
+  if (!sentence.length) return;
+  speakWord(sentence.join(' '));
+}
+
+async function clearSentence() {
+  await fetch('/api/clear_sentence', { method: 'POST' });
+  sentence = []; renderSentence();
+}
+
+function copySentence() {
+  navigator.clipboard.writeText(sentence.join(' ')).catch(() => {});
+}
+
+async function translateSentence() {
+  const out = document.getElementById('ai-output');
+  out.className = 'ai-output loading';
+  out.textContent = 'Translating with Gemini…';
+
+  try {
+    const res = await fetch('/gemini_translate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ sentence })
+    });
+    const d = await res.json();
+    out.className = 'ai-output';
+    out.innerHTML = d.response.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  } catch(e) {
+    out.className = 'ai-output'; out.textContent = 'Error connecting to AI.';
+  }
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chat-input');
+  const msg = inp.value.trim(); if (!msg) return;
+  inp.value = '';
+  const out = document.getElementById('ai-output');
+  out.className = 'ai-output loading';
+  out.textContent = 'Thinking…';
+  try {
+    const res = await fetch('/gemini_chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: msg })
+    });
+    const d = await res.json();
+    out.className = 'ai-output';
+    out.innerHTML = d.response.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  } catch(e) {
+    out.className = 'ai-output'; out.textContent = 'Error.';
+  }
+}
+
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendChat();
+});
+
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+async function loadStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    document.getElementById('badge-cam').className = 'hbadge ' + (d.mediapipe ? 'cam' : 'off');
+    document.getElementById('cam-badge-txt').textContent = d.mediapipe ? 'CAMERA' : 'NO MEDIAPIPE';
+    document.getElementById('badge-esp').className = 'hbadge ' + (d.esp32_live ? 'glove' : 'off');
+    document.getElementById('esp-badge-txt').textContent = d.esp32_live ? 'GLOVE LIVE' : 'GLOVE OFFLINE';
+    document.getElementById('badge-gemini').className = 'hbadge ' + (d.gemini ? 'gemini' : 'off');
+    document.getElementById('gemini-status').textContent = d.gemini ? '✓ Connected' : 'Set GEMINI_API_KEY';
+  } catch(e) {}
+}
+
+async function loadRefGrid() {
+  try {
+    const r = await fetch('/get_isl_signs');
+    const signs = await r.json();
+    const grid = document.getElementById('ref-grid');
+    grid.innerHTML = signs.slice(0, 30).map(s => `
+      <div class="ref-chip" title="${s.description}">
+        <span class="ri">${s.emoji}</span>
+        <span class="rn">${s.sign}</span>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('ref-grid').textContent = '—';
+  }
+}
+
+loadStatus();
+loadRefGrid();
+setInterval(loadStatus, 8000);
+setInterval(pollUnified, 300);
+</script>
+</body>
+</html>

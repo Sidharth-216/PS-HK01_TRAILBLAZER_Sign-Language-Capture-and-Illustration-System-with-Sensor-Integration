@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISL Sign Language Translator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06070d;--bg2:#0d0f1c;--bg3:#131629;--panel:#161929;--border:#1e2440;
+  --accent:#4fffb0;--accent2:#7b61ff;--accent3:#ff6b6b;
+  --text:#e8eaf6;--muted:#5c6184;
+  --thumb:#4fffb0;--index:#7b61ff;--middle:#ff6b6b;--ring:#ffbe0b;--pinky:#fb5607;
+}
+html{font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(78,255,176,.03)1px,transparent 1px),linear-gradient(90deg,rgba(78,255,176,.03)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* ── TOP BANNER ── */
+#top-banner{position:fixed;top:0;left:0;right:0;z-index:999;text-align:center;padding:5px 14px;font-family:'Space Mono',monospace;font-size:.68rem;font-weight:700;letter-spacing:.18em;display:none;transition:all .4s}
+#top-banner.fallback{display:block;background:rgba(123,97,255,.12);color:var(--accent2);border-bottom:1px solid rgba(123,97,255,.3)}
+#top-banner.posture{display:block;background:rgba(123,97,255,.15);color:var(--accent2);border-bottom:1px solid rgba(123,97,255,.3)}
+#top-banner.offline{display:block;background:linear-gradient(90deg,#1a0a00,#0e0500,#1a0a00);background-size:200% 100%;animation:bmove 3s linear infinite;color:#ffbe0b;border-bottom:1px solid rgba(255,190,11,.2)}
+@keyframes bmove{0%{background-position:0%}100%{background-position:200%}}
+
+/* ── HEADER ── */
+header{position:relative;padding:22px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--bg2);z-index:10;transition:margin-top .3s}
+header.has-banner{margin-top:28px}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 20px rgba(78,255,176,.3)}
+.logo-text h1{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
+.logo-text p{font-size:.72rem;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase}
+.status-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.badge{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:20px;border:1px solid;font-size:.75rem;font-family:'Space Mono',monospace;font-weight:700;transition:all .4s}
+.badge.live      {border-color:var(--accent);color:var(--accent);background:rgba(78,255,176,.08)}
+.badge.model     {border-color:var(--accent2);color:var(--accent2);background:rgba(123,97,255,.08)}
+.badge.src-live  {border-color:var(--accent);color:var(--accent);background:rgba(78,255,176,.08)}
+.badge.src-posture{border-color:var(--accent2);color:var(--accent2);background:rgba(123,97,255,.08)}
+.badge.src-dummy {border-color:#ffbe0b;color:#ffbe0b;background:rgba(255,190,11,.10)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* ── GRID ── */
+main{position:relative;z-index:1;display:grid;grid-template-columns:360px 1fr 300px;grid-template-rows:auto auto;gap:16px;padding:20px;max-width:1400px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(78,255,176,.3),transparent)}
+.card-label{font-size:.68rem;font-family:'Space Mono',monospace;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-label::before{content:'';width:14px;height:1px;background:var(--muted)}
+
+/* ── LEFT: Gesture ── */
+.gesture-card{grid-row:span 2;display:flex;flex-direction:column;align-items:center}
+.gesture-emoji{font-size:6rem;line-height:1;margin:16px 0 10px;filter:drop-shadow(0 0 30px rgba(78,255,176,.4));transition:transform .2s ease,filter .3s}
+.gesture-emoji.flash{transform:scale(1.25);filter:drop-shadow(0 0 50px rgba(78,255,176,.8))}
+.gesture-name{font-size:2.8rem;font-weight:800;letter-spacing:-.03em;color:var(--accent);text-shadow:0 0 40px rgba(78,255,176,.4);transition:all .3s;text-align:center;min-height:60px}
+
+/* Source tag under gesture name */
+.src-tag{font-size:.65rem;font-family:'Space Mono',monospace;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border-radius:10px;border:1px solid;margin-top:4px;transition:all .4s}
+.src-tag.live   {color:var(--accent);border-color:var(--accent);background:rgba(78,255,176,.08)}
+.src-tag.posture{color:var(--accent2);border-color:var(--accent2);background:rgba(123,97,255,.08)}
+.src-tag.dummy  {color:#ffbe0b;border-color:#ffbe0b;background:rgba(255,190,11,.08)}
+
+.confidence-ring{position:relative;width:100px;height:100px;margin:14px auto}
+.confidence-ring svg{transform:rotate(-90deg);width:100%;height:100%}
+.ring-bg{fill:none;stroke:var(--border);stroke-width:6}
+.ring-fill{fill:none;stroke:var(--accent);stroke-width:6;stroke-linecap:round;stroke-dasharray:283;stroke-dashoffset:283;transition:stroke-dashoffset .5s ease;filter:drop-shadow(0 0 6px var(--accent))}
+.ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent)}
+
+.sentence-box{width:100%;margin-top:10px;padding:14px;background:var(--bg3);border-radius:12px;border:1px solid var(--border);min-height:60px}
+.sentence-words{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+.word-chip{padding:4px 12px;border-radius:20px;font-size:.85rem;font-weight:600;background:rgba(78,255,176,.12);border:1px solid rgba(78,255,176,.3);color:var(--accent);animation:chip-in .2s ease}
+@keyframes chip-in{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.sentence-actions{display:flex;gap:8px;margin-top:10px}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:'Syne',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:rgba(78,255,176,.12);border-color:var(--accent);color:var(--accent)}
+
+/* ── MIDDLE ── */
+.sensors-card{grid-column:2}
+.bars-grid{display:flex;flex-direction:column;gap:14px}
+.bar-row{display:grid;grid-template-columns:68px 1fr 52px;align-items:center;gap:12px}
+.bar-finger{font-family:'Space Mono',monospace;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em}
+.bar-track{height:10px;background:var(--bg3);border-radius:5px;overflow:visible;position:relative}
+.bar-fill{height:100%;border-radius:5px;width:0%;transition:width .28s ease;position:relative}
+.bar-fill::after{content:'';position:absolute;right:-2px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:inherit;box-shadow:0 0 8px currentColor}
+.bar-val{font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);text-align:right}
+.f-thumb{background:var(--thumb)}.c-thumb{color:var(--thumb)}
+.f-index{background:var(--index)}.c-index{color:var(--index)}
+.f-middle{background:var(--middle)}.c-middle{color:var(--middle)}
+.f-ring{background:var(--ring)}.c-ring{color:var(--ring)}
+.f-pinky{background:var(--pinky)}.c-pinky{color:var(--pinky)}
+.pinky-row{opacity:.35}
+
+.wave-card{grid-column:2}
+#waveCanvas{width:100%;height:100px;display:block;border-radius:8px;background:var(--bg3)}
+
+/* ── RIGHT ── */
+.history-card{grid-column:3;grid-row:span 2;display:flex;flex-direction:column}
+.history-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;max-height:480px;padding-right:4px}
+.history-list::-webkit-scrollbar{width:3px}
+.history-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.hist-item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);animation:slide-in .25s ease;transition:border-color .2s}
+.hist-item:hover{border-color:rgba(78,255,176,.3)}
+.hist-item.src-dummy{border-color:rgba(255,190,11,.2)}
+.hist-item.src-live{border-color:rgba(78,255,176,.25)}
+@keyframes slide-in{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+.hist-icon{font-size:1.4rem}
+.hist-info{flex:1}
+.hist-name{font-weight:700;font-size:.9rem;color:var(--text)}
+.hist-meta{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-top:2px}
+.model-strip{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.mchip{padding:5px 10px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted)}
+.mchip span{color:var(--accent);font-weight:700}
+
+@media(max-width:1100px){main{grid-template-columns:320px 1fr}.history-card{grid-column:1/-1;grid-row:auto}.history-list{max-height:200px;flex-direction:row;flex-wrap:wrap;overflow-x:auto}.hist-item{min-width:140px}}
+@media(max-width:720px){main{grid-template-columns:1fr}.gesture-card,.wave-card,.sensors-card{grid-column:1;grid-row:auto}}
+</style>
+</head>
+<body>
+
+<div id="top-banner"></div>
+
+<header id="hdr">
+  <div class="logo">
+    <div class="logo-icon">🤟</div>
+    <div class="logo-text"><h1>ISL Translator</h1><p>Indian Sign Language · Real-Time</p></div>
+  </div>
+  <div class="status-row">
+    <div class="badge live"><span class="dot"></span><span id="conn-label">CONNECTING</span></div>
+    <div class="badge model" id="model-badge"><span id="model-label">LOADING</span></div>
+    <div class="badge src-live" id="src-badge" style="display:none"><span id="src-label">—</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT -->
+  <div class="card gesture-card">
+    <div class="card-label" id="g-card-label">Detected Gesture</div>
+    <div class="gesture-emoji" id="g-emoji">🤚</div>
+    <div class="gesture-name"  id="g-name">Waiting…</div>
+    <div class="src-tag live"  id="src-tag" style="display:none"></div>
+
+    <div class="confidence-ring">
+      <svg viewBox="0 0 100 100">
+        <circle class="ring-bg"   cx="50" cy="50" r="45"/>
+        <circle class="ring-fill" cx="50" cy="50" r="45" id="ring-fill"/>
+      </svg>
+      <div class="ring-value" id="ring-val">0%</div>
+    </div>
+
+    <div style="width:100%;margin-top:10px">
+      <div class="card-label" style="margin-bottom:10px">Sentence Builder</div>
+      <div class="sentence-box">
+        <div class="sentence-words" id="sentence-words">
+          <span style="color:var(--muted);font-size:.8rem">Gestures will appear here…</span>
+        </div>
+      </div>
+      <div class="sentence-actions">
+        <button class="btn primary" onclick="speakSentence()">🔊 Speak</button>
+        <button class="btn" onclick="clearSentence()">✕ Clear</button>
+        <button class="btn" onclick="copySentence()">⎘ Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDDLE TOP -->
+  <div class="card sensors-card">
+    <div class="card-label">Live Sensor Readings (ADC 0–4095)</div>
+    <div class="bars-grid">
+      <div class="bar-row"><span class="bar-finger c-thumb">Thumb</span><div class="bar-track"><div class="bar-fill f-thumb" id="b-thumb"></div></div><span class="bar-val" id="v-thumb">0</span></div>
+      <div class="bar-row"><span class="bar-finger c-index">Index</span><div class="bar-track"><div class="bar-fill f-index" id="b-index"></div></div><span class="bar-val" id="v-index">0</span></div>
+      <div class="bar-row"><span class="bar-finger c-middle">Middle</span><div class="bar-track"><div class="bar-fill f-middle" id="b-middle"></div></div><span class="bar-val" id="v-middle">0</span></div>
+      <div class="bar-row"><span class="bar-finger c-ring">Ring</span><div class="bar-track"><div class="bar-fill f-ring" id="b-ring"></div></div><span class="bar-val" id="v-ring">0</span></div>
+      <div class="bar-row pinky-row"><span class="bar-finger c-pinky">Pinky</span><div class="bar-track"><div class="bar-fill f-pinky" id="b-pinky"></div></div><span class="bar-val" id="v-pinky">—</span></div>
+    </div>
+  </div>
+
+  <!-- MIDDLE BOTTOM -->
+  <div class="card wave-card">
+    <div class="card-label">Sensor Waveform</div>
+    <canvas id="waveCanvas" height="100"></canvas>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="card history-card">
+    <div class="card-label">Recognition History</div>
+    <div class="history-list" id="history-list">
+      <div style="color:var(--muted);font-size:.8rem;padding:10px">No gestures yet…</div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="card-label">System Info</div>
+      <div class="model-strip" id="model-strip"><div class="mchip">Loading…</div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const FINGERS = ["thumb","index","middle","ring","pinky"];
+const COLORS  = {thumb:"#4fffb0",index:"#7b61ff",middle:"#ff6b6b",ring:"#ffbe0b",pinky:"#fb5607"};
+const waveData= {thumb:[],index:[],middle:[],ring:[],pinky:[]};
+const WAVE_MAX = 120;
+
+// ── Canvas ──
+const canvas=document.getElementById("waveCanvas"),ctx=canvas.getContext("2d");
+function resizeCanvas(){canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight}
+resizeCanvas();window.addEventListener("resize",resizeCanvas);
+function drawWave(){
+  const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle="rgba(30,36,64,.8)";ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+  FINGERS.forEach(f=>{
+    const d=waveData[f];if(d.length<2)return;
+    ctx.strokeStyle=COLORS[f];ctx.lineWidth=1.5;ctx.globalAlpha=f==="pinky"?.2:.85;
+    ctx.shadowColor=COLORS[f];ctx.shadowBlur=4;ctx.beginPath();
+    d.forEach((v,i)=>{const x=(i/(WAVE_MAX-1))*W,y=H-(v/4095)*H*.88-H*.06;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+    ctx.stroke();ctx.globalAlpha=1;ctx.shadowBlur=0;
+  });
+  requestAnimationFrame(drawWave);
+}
+drawWave();
+
+// ── State ──
+let sentence=[],histLen=0,lastGesture="",lastSrc="";
+
+// ── Source UI ──
+// No "demo" language anywhere — use neutral descriptive labels
+const SRC_LABELS = {
+  live:    "🟢 LIVE · ML",
+  posture: "🟣 LIVE · POSTURE",
+  dummy:   "🟡 FALLBACK",
+  waiting: "⏳ WAITING",
+};
+const SRC_BANNER = {
+  live:    "",
+  posture: "POSTURE MATCH — Real sensor data · Nearest gesture classification",
+  dummy:   "SENSOR SIGNAL WEAK — Showing reference gestures until detection recovers",
+ /* offline: "SENSOR OFFLINE — Showing reference gestures · Connect ESP32 to resume",*/
+  waiting: "",
+};
+
+function applySource(src, esp32Live){
+  if(src===lastSrc)return;
+  lastSrc=src;
+  const banner   = document.getElementById("top-banner");
+  const hdr      = document.getElementById("hdr");
+  const srcBadge = document.getElementById("src-badge");
+  const srcLabel = document.getElementById("src-label");
+  const srcTag   = document.getElementById("src-tag");
+  const gLabel   = document.getElementById("g-card-label");
+  const connLabel= document.getElementById("conn-label");
+
+  // Banner — distinguish offline vs signal-weak fallback
+  let bannerKey = src;
+  if(src === "dummy" && esp32Live === false) bannerKey = "offline";
+
+  const msg = SRC_BANNER[bannerKey] || "";
+  if(msg){
+    banner.textContent = msg;
+    banner.className = (src==="dummy") ? (esp32Live ? "fallback" : "offline") : "posture";
+    hdr.classList.add("has-banner");
+  } else {
+    banner.className = "";
+    banner.style.display = "none";
+    hdr.classList.remove("has-banner");
+  }
+
+  // Source badge in header
+  if(src !== "waiting"){
+    srcBadge.style.display = "flex";
+    srcBadge.className = "badge src-" + src;
+    srcLabel.textContent = SRC_LABELS[src] || src.toUpperCase();
+  } else {
+    srcBadge.style.display = "none";
+  }
+
+  // Tag under gesture name
+  if(src==="live"||src==="posture"||src==="dummy"){
+    srcTag.style.display = "inline-block";
+    srcTag.className = "src-tag " + src;
+    srcTag.textContent = SRC_LABELS[src] || src;
+  } else {
+    srcTag.style.display = "none";
+  }
+
+  // Connection label — no "DEMO" word
+  connLabel.textContent =
+    src==="live"    ? "LIVE" :
+    src==="posture" ? "SENSOR" :
+    src==="dummy"   ? (esp32Live ? "FALLBACK" : "DETECING") :
+    "CONNECTING";
+
+  // Card label
+  gLabel.textContent =
+    src==="live"    ? "Detected Gesture (ML)" :
+    src==="posture" ? "Detected Gesture (Posture)" :
+    src==="dummy"   ? "Reference Gesture" :
+    "Detected Gesture";
+}
+
+// ── UI Update ──
+function setConf(pct){
+  document.getElementById("ring-fill").style.strokeDashoffset=283*(1-pct/100);
+  document.getElementById("ring-val").textContent=Math.round(pct)+"%";
+}
+
+function updateBars(raw){
+  FINGERS.forEach(f=>{
+    const val=raw[f]||0;
+    if(f==="pinky"){document.getElementById("v-pinky").textContent="—";return}
+    document.getElementById("b-"+f).style.width=(val/4095*100).toFixed(1)+"%";
+    document.getElementById("v-"+f).textContent=val;
+    waveData[f].push(val);
+    if(waveData[f].length>WAVE_MAX)waveData[f].shift();
+  });
+}
+
+let esp32Live = false; // track from meta
+
+function updateGesture(data){
+  applySource(data.source||"waiting", esp32Live);
+  if(data.raw)updateBars(data.raw);
+  setConf(data.confidence||0);
+
+  if(data.gesture&&data.gesture!=="—"&&data.gesture!==lastGesture){
+    document.getElementById("g-name").textContent=data.gesture;
+    document.getElementById("g-emoji").textContent=data.icon||"🤟";
+    const e=document.getElementById("g-emoji");
+    e.classList.add("flash");setTimeout(()=>e.classList.remove("flash"),300);
+    lastGesture=data.gesture;
+  }
+
+  if(data.sentence&&data.sentence.length!==sentence.length){
+    sentence=data.sentence;renderSentence();
+  }
+}
+
+function renderSentence(){
+  const b=document.getElementById("sentence-words");
+  b.innerHTML=sentence.length
+    ?sentence.map(w=>`<span class="word-chip">${w}</span>`).join("")
+    :`<span style="color:var(--muted);font-size:.8rem">Gestures will appear here…</span>`;
+}
+
+function updateHistory(items){
+  if(items.length===histLen)return;
+  histLen=items.length;
+  const list=document.getElementById("history-list");
+  // History shows source as "Sensor" or "Fallback" — no "demo" word
+  const srcLabel = s => s==="live"?"Sensor·ML" : s==="posture"?"Sensor·Posture" : s==="dummy"?"Fallback" : s||"";
+  list.innerHTML=items.length
+    ?items.map(i=>`
+      <div class="hist-item src-${i.source||''}">
+        <span class="hist-icon">${i.icon||"🤟"}</span>
+        <div class="hist-info">
+          <div class="hist-name">${i.gesture}</div>
+          <div class="hist-meta">${i.confidence}% · ${i.time} · ${srcLabel(i.source)}</div>
+        </div>
+      </div>`).join("")
+    :`<div style="color:var(--muted);font-size:.8rem;padding:10px">No gestures yet…</div>`;
+}
+
+// ── Meta ──
+async function loadMeta(){
+  try{
+    const r=await fetch("/api/meta");const m=await r.json();
+    esp32Live = !!m.esp32_live;
+    const acc=m.accuracy||"—";
+    const typ=m.model_type||"Posture-Match";
+    document.getElementById("model-badge").innerHTML=`<span id="model-label">${typ} · ${acc}%</span>`;
+    document.getElementById("model-strip").innerHTML=`
+      <div class="mchip">Model: <span>${typ}</span></div>
+      <div class="mchip">Acc: <span>${acc}%</span></div>
+      <div class="mchip">Gestures: <span>${(m.gestures||[]).length}</span></div>
+      <div class="mchip">ESP32: <span>${m.esp32_live?"🟢 LIVE":"🔴 "}</span></div>`;
+  }catch(e){}
+}
+
+// ── Poll ──
+let failCount=0;
+async function poll(){
+  try{
+    const [lr,hr]=await Promise.all([fetch("/api/latest"),fetch("/api/history")]);
+    const latest=await lr.json(),hist=await hr.json();
+    updateGesture(latest);
+    updateHistory(hist);
+    failCount=0;
+  }catch(e){
+    failCount++;
+    if(failCount>4)document.getElementById("conn-label").textContent="DISCONNECTED";
+  }
+}
+
+// ── Buttons ──
+async function speakSentence(){
+  const t=sentence.join(" ");if(!t)return;
+  await fetch("/api/speak",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:t})});
+}
+async function clearSentence(){
+  await fetch("/api/clear_sentence",{method:"POST"});
+  sentence=[];renderSentence();
+}
+function copySentence(){
+  navigator.clipboard.writeText(sentence.join(" ")).then(()=>{
+    const btn=document.querySelector(".sentence-actions .btn:last-child");
+    btn.textContent="✓ Copied";setTimeout(()=>btn.textContent="⎘ Copy",1500);
+  }).catch(()=>{});
+}
+
+// ── Init ──
+loadMeta();
+setInterval(loadMeta,7000);
+poll();
+setInterval(poll,250);
+</script>
+</body>
+</html>
