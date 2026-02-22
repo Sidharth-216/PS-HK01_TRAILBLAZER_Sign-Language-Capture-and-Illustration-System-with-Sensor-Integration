@@ -23,7 +23,7 @@ Purely **sensor-based systems**, while reliable, may struggle with visually expr
 MudraVaani uses a **hybrid approach** that integrates:
 
 - **Sensor-based smart glove** for precise finger movement detection  
-- **Camera-based gesture interpretation** powered by the **Gemini API**  
+- **Camera-based gesture interpretation** 
 - **Machine Learning–based classification** for reliable gesture recognition  
 
 This combination improves robustness, accuracy, and usability in real-world environments.
