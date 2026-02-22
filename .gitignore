@@ -1,1 +1,2 @@
-gesture_model.pkl
+*.pkl
+ml/ml/models/
