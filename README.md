@@ -4,7 +4,7 @@
 # MudraVaani 🤟  
 ### A Hybrid Indian Sign Language (ISL) Translation System
 
-MudraVaani is a **hybrid assistive communication system** designed to translate **Indian Sign Language (ISL)** gestures into **real-time text and speech** by combining **sensor-based wearable input** with **camera-based AI vision using the Gemini API**.
+MudraVaani is a **hybrid assistive communication system** designed to translate **Indian Sign Language (ISL)** gestures into **real-time text and speech** by combining **sensor-based wearable input** with **camera-based AI vision**.
 
 This project was developed as part of a hackathon to address real-world accessibility and inclusion challenges faced by hearing- and speech-impaired individuals.
 
